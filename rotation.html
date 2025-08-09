@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rotation Builder — Basketball Rotation Manager</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header id="main-header">
+    <h1>Basketball Rotation Manager</h1>
+    <nav id="main-nav">
+      <a class="nav-btn" href="dashboard.html">Dashboard</a>
+      <a class="nav-btn" href="players.html">Roster</a>
+      <a class="nav-btn" href="rotation.html">New Rotation</a>
+      <span id="user-email-display"></span>
+      <button id="logout-btn" onclick="signOut()" style="display:none;">Logout</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="builder-view" class="view">
+      <div class="builder-controls">
+        <input type="text" id="rotation-name" placeholder="Enter Rotation Name (e.g., Vs. Tigers)">
+        <button id="save-rotation-btn">Save Rotation</button>
+        <div class="export-menu">
+          <button id="export-btn">Export / Print</button>
+          <div class="export-options">
+            <a href="#" id="download-pdf-btn">Download as PDF</a>
+            <a href="#" id="print-full-btn">Print Full Game</a>
+            <a href="#" id="print-q1-btn">Print Q1</a>
+            <a href="#" id="print-q2-btn">Print Q2</a>
+            <a href="#" id="print-q3-btn">Print Q3</a>
+            <a href="#" id="print-q4-btn">Print Q4</a>
+          </div>
+        </div>
+      </div>
+      <div id="rotation-builder-main">
+        <div id="player-pool-container">
+          <h3>Available Players</h3>
+          <div id="player-pool"></div>
+        </div>
+
+        <div id="rotation-board-container">
+          <div id="rotation-board"></div>
+        </div>
+
+        <div id="analytics-panel-container">
+          <h3>Analytics</h3>
+          <div id="minutes-played">
+            <h4>Total Minutes Per Player</h4>
+            <ul id="minutes-list"></ul>
+            <div id="total-minutes-display"></div>
+          </div>
+          <div id="live-lineup-stats">
+            <h4>Live Lineup Stats (PG, SG, SF, PF, C)</h4>
+            <ul id="live-stats-list"></ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="pdf-render-target"></div>
+
+  <div id="stint-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+      <h3>Set Player Stint</h3>
+      <form id="stint-form">
+        <input type="hidden" id="stint-quarter">
+        <input type="hidden" id="stint-position">
+        <input type="hidden" id="stint-id">
+        <input type="hidden" id="stint-player-id">
+
+        <label for="stint-in-time">In at (minutes):</label>
+        <input type="number" id="stint-in-time" min="0" max="10" step="1" required>
+
+        <label for="stint-out-time">Out at (minutes):</label>
+        <input type="number" id="stint-out-time" min="0" max="10" step="1" required>
+
+        <div class="modal-actions">
+          <button type="submit">Save Stint</button>
+          <button type="button" id="cancel-stint-btn">Cancel</button>
+          <button type="button" id="delete-stint-btn" class="delete-btn" style="display:none;">Delete Stint</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/builder.js"></script>
+  <script src="js/analytics.js"></script>
+  <script src="js/export.js"></script>
+  <script>
+    setUserBadge();
+    requireAuth(()=>{ initBuilderPage(); });
+  </script>
+</body>
+</html>
