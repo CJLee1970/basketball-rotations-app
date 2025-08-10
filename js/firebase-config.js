@@ -12,12 +12,10 @@ const firebaseConfig = {
   measurementId: "G-MK4QLJQSJ1"
 };
 
-// Initialise (guarded so it won't double-init if run twice)
-if (!firebase.apps || !firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-}
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
 
-// Expose for other scripts
-window.auth = firebase.auth();
-window.db = firebase.firestore();
+// Make auth and db globally available
+const auth = firebase.auth();
+const db = firebase.firestore();
 
