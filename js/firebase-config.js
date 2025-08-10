@@ -3,7 +3,7 @@
 // Do NOT use `import` lines here.
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDA6iCgvu_HMGHkc3JV4qJoio8CSGekcl8",
+  apiKey: "AIzaSyCT0zZbCMotQsYzQRFtWQOI7Ew35AbXwDc",
   authDomain: "basketballrotations2025.firebaseapp.com",
   projectId: "basketballrotations2025",
   storageBucket: "basketballrotations2025.firebasestorage.app",
