@@ -1,13 +1,12 @@
 /* js/export.js
-   Clean PDF + Print export for the Rotation Builder.
+   Clean PDF + Print export for the Rotation Builder, with Analytics Summary.
    Requires html2pdf (loaded before this file) and the following globals:
    - currentRotation: { q1:{PG:[...],...}, q2:..., q3:..., q4:... }
-   - currentRoster: [{ id, name, number, color, ... }]
+   - currentRoster: [{ id, name, number, color, ppg, rpg, spg }]
    - MINUTES_PER_QUARTER: number
 */
 
 (function () {
-  // --- Utilities ---
   const POSITIONS = ["PG", "SG", "SF", "PF", "C"];
   const QUARTERS = ["q1", "q2", "q3", "q4"];
   const QLABEL = { q1: "Quarter 1", q2: "Quarter 2", q3: "Quarter 3", q4: "Quarter 4" };
@@ -16,7 +15,47 @@
     return currentRoster.find(p => p.id === id);
   }
 
-  function mm(val) { return `${val}mm`; } // for jsPDF size helpers if ever needed
+  function escapeHtml(s) {
+    return (s || "").replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+  }
+
+  // --- Compute analytics for export (minutes per player + totals) ---
+  function computeAnalytics() {
+    const minutes = {};
+    currentRoster.forEach(p => (minutes[p.id] = 0));
+
+    for (const q of QUARTERS) {
+      const block = currentRotation?.[q] || {};
+      for (const pos of POSITIONS) {
+        (block[pos] || []).forEach(st => {
+          const dur = (Number(st.start) || 0) - (Number(st.end) || 0);
+          if (dur > 0 && minutes.hasOwnProperty(st.playerId)) {
+            minutes[st.playerId] += dur;
+          }
+        });
+      }
+    }
+
+    const rows = Object.keys(minutes)
+      .map(pid => {
+        const p = playerById(pid);
+        return p ? {
+          name: p.name,
+          number: p.number,
+          ppg: Number(p.ppg || 0),
+          rpg: Number(p.rpg || 0),
+          spg: Number(p.spg || 0),
+          mins: minutes[pid]
+        } : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.mins - a.mins);
+
+    const totalAllocated = rows.reduce((acc, r) => acc + r.mins, 0);
+    const fullGameTotal = 5 * MINUTES_PER_QUARTER * 4;
+
+    return { rows, totalAllocated, fullGameTotal };
+  }
 
   // --- Build a self-contained print node (no app CSS required) ---
   function buildPrintNode({ title, dateStr, quarter = null }) {
@@ -27,22 +66,33 @@
       color:#111; width:1400px; margin:0 auto; padding:24px 28px; box-sizing:border-box;
     `;
 
-    // Minimal embedded CSS to ensure consistent rendering (html2pdf/html2canvas safe)
+    // Embedded CSS for consistent rendering
     const style = document.createElement("style");
     style.textContent = `
       .print-header{ text-align:center; margin-bottom:16px; }
       .print-header h1{ margin:0 0 6px; font-size:22px; }
       .print-header p{ margin:0; font-size:12px; color:#555; }
-      .quarter{ border:1px solid #ddd; border-radius:6px; padding:10px 12px; margin:10px 0 16px; }
+
+      .quarter{ border:1px solid #ddd; border-radius:6px; padding:10px 12px; margin:10px 0 16px; page-break-inside: avoid; background:#fff; }
       .q-title{ font-weight:700; font-size:13px; margin:0 0 8px; text-align:center; }
       .grid{ display:grid; grid-template-columns:60px 1fr; grid-auto-rows:32px; row-gap:8px; column-gap:8px; }
       .ruler{ grid-column:1 / -1; height:20px; margin:0 0 6px; position:relative; }
       .ruler .tick{ position:absolute; top:0; height:100%; width:1px; background:#ccc; }
       .ruler .num{ position:absolute; top:0; transform:translateX(-50%); font-size:10px; color:#666; }
+
       .label{ display:flex; align-items:center; justify-content:flex-end; padding-right:6px; font-weight:600; color:#555; }
       .track{ position:relative; border:1px solid #eee; background:#fafafa; height:28px; border-radius:4px; overflow:hidden; }
       .stint{ position:absolute; top:0; bottom:0; display:flex; align-items:center; justify-content:center;
               font-size:11px; color:#fff; border-right:1px solid rgba(255,255,255,.6); padding:0 6px; white-space:nowrap; }
+
+      .analytics{ margin-top:20px; border:1px solid #ddd; border-radius:6px; background:#fff; padding:12px 14px; }
+      .analytics h3{ margin:0 0 10px; font-size:16px; }
+      .analytics .totals{ font-size:13px; margin:0 0 10px; }
+      .table{ width:100%; border-collapse:collapse; font-size:12px; }
+      .table th,.table td{ border:1px solid #e5e5e5; padding:6px 8px; text-align:left; }
+      .table th{ background:#f7f7f7; }
+      .right{ text-align:right; }
+      @media print { .quarter, .analytics { page-break-inside: avoid; } }
     `;
     wrap.appendChild(style);
 
@@ -52,9 +102,12 @@
     header.innerHTML = `<h1>${escapeHtml(title || "Game Rotation")}</h1><p>Generated on: ${dateStr}</p>`;
     wrap.appendChild(header);
 
-    // Build quarters
+    // Quarters (all or single)
     const quartersToRender = quarter ? [quarter] : QUARTERS;
     quartersToRender.forEach(q => wrap.appendChild(renderQuarter(q)));
+
+    // Analytics summary (always include; still useful even for single quarter)
+    wrap.appendChild(renderAnalytics());
 
     return wrap;
   }
@@ -71,7 +124,6 @@
     // ruler
     const ruler = document.createElement("div");
     ruler.className = "ruler";
-    // 10 down to 1 markers; we map positions to percentages
     for (let m = MINUTES_PER_QUARTER; m >= 1; m--) {
       const pct = ((MINUTES_PER_QUARTER - m) / MINUTES_PER_QUARTER) * 100;
       const tick = document.createElement("div");
@@ -106,9 +158,11 @@
       stints.forEach(st => {
         const p = playerById(st.playerId);
         if (!p) return;
-        const duration = st.start - st.end;                     // minutes
+        const duration = (Number(st.start) || 0) - (Number(st.end) || 0);
+        if (duration <= 0) return;
+
         const widthPct = (duration / MINUTES_PER_QUARTER) * 100;
-        const leftPct = ((MINUTES_PER_QUARTER - st.start) / MINUTES_PER_QUARTER) * 100;
+        const leftPct = ((MINUTES_PER_QUARTER - Number(st.start)) / MINUTES_PER_QUARTER) * 100;
 
         const el = document.createElement("div");
         el.className = "stint";
@@ -123,9 +177,51 @@
     return qDiv;
   }
 
-  // Escape helper (for titles)
-  function escapeHtml(s) {
-    return (s || "").replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+  function renderAnalytics() {
+    const { rows, totalAllocated, fullGameTotal } = computeAnalytics();
+
+    const wrap = document.createElement("div");
+    wrap.className = "analytics";
+
+    const h3 = document.createElement("h3");
+    h3.textContent = "Analytics Summary";
+    wrap.appendChild(h3);
+
+    const totals = document.createElement("div");
+    totals.className = "totals";
+    totals.innerHTML = `<strong>Total Minutes Allocated:</strong> ${totalAllocated} / ${fullGameTotal}`;
+    wrap.appendChild(totals);
+
+    const table = document.createElement("table");
+    table.className = "table";
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th>Player</th>
+          <th class="right">PPG</th>
+          <th class="right">RPG</th>
+          <th class="right">SPG</th>
+          <th class="right">Minutes</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+    const tb = table.querySelector("tbody");
+
+    rows.forEach(r => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${escapeHtml(`${r.name}${r.number ? " (#" + r.number + ")" : ""}`)}</td>
+        <td class="right">${Number(r.ppg).toFixed(1)}</td>
+        <td class="right">${Number(r.rpg).toFixed(1)}</td>
+        <td class="right">${Number(r.spg).toFixed(1)}</td>
+        <td class="right">${r.mins}</td>
+      `;
+      tb.appendChild(tr);
+    });
+
+    wrap.appendChild(table);
+    return wrap;
   }
 
   // Ensure we have a hidden host node for html2pdf / print
@@ -137,7 +233,6 @@
       document.body.appendChild(host);
     }
     host.innerHTML = ""; // clear
-    // Give it real dimensions so html2canvas captures content
     host.style.cssText = "position:absolute; left:-9999px; top:0; width:1400px; visibility:hidden;";
     return host;
   }
@@ -151,8 +246,7 @@
     const node = buildPrintNode({ title, dateStr, quarter });
     host.appendChild(node);
 
-    // Wait a tick to allow layout
-    await new Promise(r => setTimeout(r, 100));
+    await new Promise(r => setTimeout(r, 100)); // allow layout
 
     const opt = {
       margin: [10, 10, 10, 10],
@@ -186,7 +280,6 @@
     win.document.body.appendChild(node);
     win.document.close();
     win.focus();
-    // Give it a tick for layout, then print
     setTimeout(() => { win.print(); win.close(); }, 250);
   }
 
