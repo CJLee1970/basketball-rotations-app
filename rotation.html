@@ -87,18 +87,19 @@
     </div>
   </div>
 
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
-  <!-- html2pdf library -->
+<!-- html2pdf for export -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
-  <script src="js/firebase-config.js"></script>
-  <script src="js/common.js"></script>
-  <script src="js/builder.js"></script>
-  <script src="js/analytics.js"></script>
-  <script src="js/export.js"></script>
+<!-- Your app scripts -->
+<script src="js/firebase-config.js"></script>
+<script src="js/common.js"></script>      <!-- must come BEFORE builder/analytics/export -->
+<script src="js/builder.js"></script>
+<script src="js/analytics.js"></script>
+<script src="js/export.js"></script>
   <script>
     setUserBadge();
     requireAuth(()=>{ initBuilderPage(); });
