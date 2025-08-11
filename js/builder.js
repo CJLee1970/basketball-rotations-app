@@ -20,6 +20,9 @@ function initBuilderPage(){
     if(!user) return;
     builderUser = user;
     await loadRosterForBuilder();
+    builderRoster = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    window.currentRoster = builderRoster;  // <-- add this line
+    populatePlayerPool();
     newRotation();
     initializeRotationBuilder();
     renderRotation();
