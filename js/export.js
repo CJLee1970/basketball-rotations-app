@@ -12,8 +12,10 @@
   const QLABEL = { q1: "Quarter 1", q2: "Quarter 2", q3: "Quarter 3", q4: "Quarter 4" };
 
   function playerById(id) {
-    return currentRoster.find(p => p.id === id);
-  }
+  if (window.playerById) return window.playerById(id);
+  // Fallback if common.js didn’t load for any reason
+  return (window.currentRoster || []).find(p => p.id === id) || null;
+}
 
   function escapeHtml(s) {
     return (s || "").replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
