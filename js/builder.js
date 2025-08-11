@@ -42,6 +42,7 @@ function newRotation(){
     q3:{PG:[],SG:[],SF:[],PF:[],C:[]},
     q4:{PG:[],SG:[],SF:[],PF:[],C:[]},
   };
+  window.currentRotation = currentRotation;  // <-- add this line
 }
 
 async function loadRosterForBuilder(){
@@ -195,6 +196,7 @@ saveRotationBtn.addEventListener('click', async ()=>{
     currentRotationId = ref.id;
     alert('Rotation saved.');
   }
+  window.currentRotation = currentRotation;  // <-- add this line
 });
 
 async function loadRotationById(id){
